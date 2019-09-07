@@ -63,16 +63,13 @@ class Parser:
 
     def __and__(self, p):  # &
         """
-        Run self then p (combines the results as a flat list)
+        Run self then p.
+        Two results are returned as a list.
         Have higher precedence than `|`        
         """        
         @parser_do
         def self_then_p(run):
-            a = run(self)
-            if type(a) is not list: a = [a]
-            b = run(p)
-            if type(b) is not list: b = [b]
-            return a + b
+            return [run(self), run(p)]
         return self_then_p
 
     def __or__(self, p):  # |
@@ -162,8 +159,9 @@ fail = Fail()
 def empty(_):
     """
     Always succeed, returning empty list
+    Equivalent to word('')
     """            
-    return [] 
+    return ''
 
 
 def pattern(pstr, flags=0):
@@ -209,39 +207,51 @@ def optional(p):
 
 def moreThan0(p):
     """
-    Run p repeatedly as long as possible
-    Equivalent to `optional(moreThan1(p))`
+    Run p repeatedly as long as possible.
+    The results are returned as a possibly empty list.
     Always succeed
     """   
     @parser_do
     def q(run):
         s = run(get)
         a = run(p)
+        # Consume at least one character; otherwise, loop forever
         if len(run(get)) < len(s):
             return a
         run(fail)
 
     @parser_do
     def p_star(run):
-        return run(q & p_star | empty)
+        a = []
+        while True:
+            b = run(q, nullable=True)
+            if b is None: break
+            a.append(b)
+        return a
     return p_star
 
 
 def moreThan1(p):
     """
-    Run p repeatedly (at least once) until fail
-    Equivalent to `p & moreThan(p)`
-    Possibly fails
+    Run p repeatedly at least once
+    Possibly fail
     """ 
-    return p & moreThan0(p)
+    @parser_do
+    def p_plus(run):
+        return [run(p)] + run(moreThan0(p))
+    return p_plus
 
 
 def sepBy(p, sep):
     """
     Recognizes a sequence of `p` separated by `sep`
-    Possibly fails    
-    """    
-    return p & moreThan0(sep & p)
+    The results are returned as a possibly empty list.    
+    Possibly fail    
+    """
+    @parser_do
+    def p_sepBy_sep(run):
+        return [run(p)] + reduce(add, run(moreThan0(sep & p)), [])
+    return p_sepBy_sep    
 
 
 def peek(p):
