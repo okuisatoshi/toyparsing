@@ -155,13 +155,18 @@ class Fail (Parser):
 fail = Fail()
 
 
-@parser_do
-def empty(_):
+def unit(a):
     """
-    Always succeed, returning empty list
-    Equivalent to word('')
-    """            
-    return ''
+    Monadic unit
+    Always succeed, returning `a`
+    """
+    @parser_do
+    def ret_a(run):
+        return a
+    return ret_a
+
+
+empty = unit('')
 
 
 def pattern(pstr, flags=0):
@@ -199,11 +204,14 @@ def word(pstr):
 
 def optional(p):
     """
-    Equivalent to `p | empty`
+    Return an empty or singleton list.
     Always succeed
     """
-    return p | empty
-
+    @parser_do
+    def opt_p(run):
+        a = run(p, nullable=True)
+        return [] if a is None else [a]
+    return opt_p
 
 def moreThan0(p):
     """
@@ -234,6 +242,7 @@ def moreThan0(p):
 def moreThan1(p):
     """
     Run p repeatedly at least once
+    The results are returned as a non-empty list.    
     Possibly fail
     """ 
     @parser_do
@@ -245,7 +254,7 @@ def moreThan1(p):
 def sepBy(p, sep):
     """
     Recognizes a sequence of `p` separated by `sep`
-    The results are returned as a possibly empty list.    
+    The results are returned as a non-empty list.        
     Possibly fail    
     """
     @parser_do
@@ -257,8 +266,8 @@ def sepBy(p, sep):
 def peek(p):
     """
     Looks ahead (never consume input string)
-    Returns True/False
-    Always succeeds
+    Return True or False
+    Always succeed
     """
     @parser_do
     def q(run):
