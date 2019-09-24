@@ -95,7 +95,7 @@ class Parser:
             return run(p)
         return discard_self_then_p
 
-    def __lshift__(self, p): # <<
+    def __lshift__(self, p):  # <<
         """
         Run self then p (discard the result of p)        
         Have higher precedence than `&`
@@ -107,7 +107,17 @@ class Parser:
             return a
         return self_then_discard_p
 
-    
+    def __gt__(self, f):  # >
+        """ 
+        Run self then apply the function f with the normal output
+        Fliped version of fmap
+        """
+        @parser_do
+        def f_of_self(run):
+            return f(run(self))
+        return f_of_self
+
+
 def parser_do(f):
     """
     Decorator
