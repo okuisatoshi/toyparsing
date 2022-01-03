@@ -31,16 +31,16 @@ class Parser:
     def __call__(self, s):
         def run(m, nullable=False, throwable=False):
             """
-            Run a parser `m`, while chaining its state underground.
+            Run a parser `m`, while chaining its state under the hood.
             Possibly returns `None` if `nullable=True` is specified; otherwise, skip the remaining task.
-            Specifying `throwable=True` will raise `Nothing` exception, instead. 
-            """            
+            Specifying `throwable=True` will raise a user responsible exception, instead.
+            """
             nonlocal s
             r = m(s)
             if r is not None:
-                (a, s) = r 
+                (a, s) = r
                 return a
-            # Note that s is unchanged if the computation fails 
+            # Note that s is unchanged if the computation fails
             if nullable:
                 return None
             if throwable:
@@ -59,14 +59,14 @@ class Parser:
         @parser_do
         def bind_self_f(run):
             return run(f(run(self)))
-        return bind_self_f 
+        return bind_self_f
 
     def __and__(self, p):  # &
         """
         Run self then p.
         Two results are returned as a list.
-        Have higher precedence than `|`        
-        """        
+        Have higher precedence than `|`
+        """
         @parser_do
         def self_then_p(run):
             return [run(self), run(p)]
@@ -74,8 +74,8 @@ class Parser:
 
     def __or__(self, p):  # |
         """
-        Run self first. if it fails, run p. 
-        """        
+        Run self first. if it fails, run p.
+        """
         @parser_do
         def self_or_p(run):
             a = run(self, nullable=True)
@@ -88,8 +88,8 @@ class Parser:
         """
         Run self then p (discard the result of self)
         Have higher precedence than `&`
-        """                
-        @parser_do        
+        """
+        @parser_do
         def discard_self_then_p(run):
             run(self)
             return run(p)
@@ -97,9 +97,9 @@ class Parser:
 
     def __lshift__(self, p):  # <<
         """
-        Run self then p (discard the result of p)        
+        Run self then p (discard the result of p)
         Have higher precedence than `&`
-        """                        
+        """
         @parser_do
         def self_then_discard_p(run):
             a = run(self)
@@ -108,7 +108,7 @@ class Parser:
         return self_then_discard_p
 
     def __gt__(self, f):  # >
-        """ 
+        """
         Run self then apply the function f with the normal output
         Fliped version of fmap
         """
@@ -121,7 +121,7 @@ class Parser:
 def parser_do(f):
     """
     Decorator
-    Mimic Haskell-like do notation 
+    Mimic Haskell-like do notation
     """
     return Parser(f)
 
@@ -129,7 +129,7 @@ def parser_do(f):
 class Get (Parser):
     """
     Get the current state
-    """            
+    """
     def __init__(self):
         pass
 
@@ -142,19 +142,19 @@ get = Get()
 
 class put (Parser):
     """
-    Update the current state 
-    """                
+    Update the current state
+    """
     def __init__(self, s):
         self.s = s
 
     def __call__(self, _):
         return (self.s, self.s)
 
-    
+
 class Fail (Parser):
     """
-    Always fail 
-    """    
+    Always fail
+    """
     def __init__(self):
         pass
 
@@ -183,7 +183,7 @@ def pattern(pstr, flags=0):
     """
     Recoginize regular expression `pstr`
     Possibly fail
-    """                
+    """
     pat = compile(pstr, flags=flags)
     @parser_do
     def p(run):
@@ -198,9 +198,9 @@ def pattern(pstr, flags=0):
 
 def word(pstr):
     """
-    Recoginize `word` 
-    Possibly fail    
-    """                   
+    Recoginize `word`
+    Possibly fail
+    """
     pos = len(pstr)
     @parser_do
     def p(run):
@@ -228,7 +228,7 @@ def moreThan0(p):
     Run p repeatedly as long as possible.
     The results are returned as a possibly empty list.
     Always succeed
-    """   
+    """
     @parser_do
     def q(run):
         s = run(get)
@@ -252,9 +252,9 @@ def moreThan0(p):
 def moreThan1(p):
     """
     Run p repeatedly at least once
-    The results are returned as a non-empty list.    
+    The results are returned as a non-empty list.
     Possibly fail
-    """ 
+    """
     @parser_do
     def p_plus(run):
         return [run(p)] + run(moreThan0(p))
@@ -264,13 +264,13 @@ def moreThan1(p):
 def sepBy(p, sep):
     """
     Recognizes a sequence of `p` separated by `sep`
-    The results are returned as a non-empty list.        
-    Possibly fail    
+    The results are returned as a non-empty list.
+    Possibly fail
     """
     @parser_do
     def p_sepBy_sep(run):
         return [run(p)] + reduce(add, run(moreThan0(sep & p)), [])
-    return p_sepBy_sep    
+    return p_sepBy_sep
 
 
 def peek(p):
@@ -286,16 +286,16 @@ def peek(p):
         if r is not None:
             run(put(s))
             return True
-        return False  
-    return q    
+        return False
+    return q
 
 
-def error(msg):
+def fatal(msg):
     @parser_do
     def p(run):
         s = run(get)
         raise ParserFailure("{}:{}".format(msg, s[:16]))
-    return p 
+    return p
 
 
 # Abbreviations
